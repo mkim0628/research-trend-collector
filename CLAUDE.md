@@ -130,6 +130,24 @@ one_line_summary: "<한 줄 요약>"
 - 인덱스는 토픽별로 묶이며 각 항목은 `[Paper Title](link) — 한 줄 설명` 형식이다. Deep-dive는 별도 섹션으로 분리해 표기한다.
 - 동일 논문이 여러 보고서에 등장하면 가장 최근 보고서의 항목으로 통일하고 중복 제거한다.
 
+## 자동 스케줄링 (매일 새벽 5시)
+
+`scripts/daily-collect.sh`가 `interests/*.{yaml,md}` (단, `example.*` 제외) 전체를 순회하며 Claude Code를 비대화형으로 호출해 일일 보고서를 만들고, 변경이 있으면 작업 브랜치에 커밋·푸시한다. 로그는 `.logs/daily-<YYYY-MM-DD>.log`에 남는다(.gitignore 처리됨).
+
+호스트에서 한 번만 등록한다.
+
+```bash
+chmod +x scripts/daily-collect.sh
+crontab -e
+# 다음 한 줄 추가 (절대 경로 사용):
+# 0 5 * * * /ABS/PATH/research-trend-collector/scripts/daily-collect.sh
+```
+
+전제 조건:
+- `claude` CLI가 PATH에 있고 인증되어 있음 (`ANTHROPIC_API_KEY` 또는 사전 로그인).
+- 작업 브랜치(기본 `claude/research-trend-agent-setup-dwP6M`)에 푸시 권한이 있는 git 자격 증명이 cron 사용자 환경에 설정되어 있음. 다른 브랜치를 쓰려면 `BRANCH=...` 환경 변수로 덮어쓴다.
+- 스크립트는 cron 환경에서 권한 프롬프트에 응답할 수 없으므로 `--dangerously-skip-permissions`로 실행된다 — 이 리포 외부 시스템에서는 사용하지 말 것.
+
 ## 작업 원칙
 
 - 모든 사실 주장에는 출처(URL, arXiv ID, DOI 등)를 명시한다.

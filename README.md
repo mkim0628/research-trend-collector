@@ -12,6 +12,19 @@
 
 상세 운영 규칙·보고서 형식·작업 원칙은 [`CLAUDE.md`](CLAUDE.md)를 참고하세요. 관심 분야 명세 예시는 [`interests/example.yaml`](interests/example.yaml), [`interests/example.md`](interests/example.md)에 있습니다.
 
+## 자동 실행
+
+매일 새벽 5시에 모든 `interests/*` 파일에 대해 `/collect-trends`를 비대화형으로 실행하려면 [`scripts/daily-collect.sh`](scripts/daily-collect.sh)를 호스트의 cron에 등록하세요.
+
+```bash
+chmod +x scripts/daily-collect.sh
+crontab -e
+# 다음 한 줄 추가 (절대 경로):
+# 0 5 * * * /ABS/PATH/research-trend-collector/scripts/daily-collect.sh
+```
+
+자세한 전제 조건은 [`CLAUDE.md`](CLAUDE.md)의 "자동 스케줄링" 섹션을 참고하세요.
+
 ## Reports Index
 
 > 아래 영역은 `report-indexer` 서브에이전트가 자동 갱신합니다. 마커 사이만 교체되며, 그 밖의 내용은 보존됩니다.
