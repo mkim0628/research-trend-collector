@@ -20,7 +20,7 @@
 ## 워크플로우
 
 ### 일일 동향 조사
-1. `interests/` 아래에 관심 분야 명세 파일을 작성한다 (`interests/example.yaml` 참고).
+1. `interests/` 아래에 관심 분야 명세 파일을 작성한다 (YAML 또는 Markdown, 권장 필드는 아래 참고).
 2. 다음 중 한 가지 방법으로 조사를 시작한다.
    - 슬래시 커맨드: `/collect-trends interests/<파일명>`
    - 자연어: "interests/foo.yaml 에 적힌 주제로 동향 조사해줘"
