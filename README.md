@@ -30,5 +30,15 @@ crontab -e
 > 아래 영역은 `report-indexer` 서브에이전트가 자동 갱신합니다. 마커 사이만 교체되며, 그 밖의 내용은 보존됩니다.
 
 <!-- BEGIN: AUTO-INDEX -->
-_아직 보고서가 없습니다. `interests/`에 명세를 작성하고 `/collect-trends interests/<파일명>`을 실행해 보세요._
+_마지막 업데이트: 2026-04-30 · 보고서 1개 · 논문 26편 · Deep-dive 0건_
+
+### 📂 LLM KV 캐시 관리·최적화
+- Latest: [kv-cache-optimization-2026-04-30](reports/kv-cache-optimization-2026-04-30.md)
+- 주요 논문:
+  - [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) — 가상 메모리 방식 KV 블록 관리로 단편화 제거, 처리량 2~4x 향상 (vLLM 기반)
+  - [SGLang: Efficient Execution of Structured Language Model Programs](https://arxiv.org/abs/2312.07104) — RadixAttention으로 트라이 기반 KV 자동 재사용; TTFT 최대 5x 감소, 처리량 4.4x 향상
+  - [Sarathi-Serve: Efficient LLM Inference by Piggybacking Decodes with Chunked Prefills](https://arxiv.org/abs/2308.16369) — Chunked prefill로 decode stall 제거, 배치 효율 향상
+  - [DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving](https://arxiv.org/abs/2401.09670) — Prefill/Decode 물리 분리로 GPU 활용률 최적화, SLO 달성률 크게 향상
+  - [Splitwise: Efficient Generative LLM Inference Using Phase Splitting](https://arxiv.org/abs/2311.18677) — 단계 분리 + 이종 GPU 클러스터 활용, 비용 20% 절감
+
 <!-- END: AUTO-INDEX -->
