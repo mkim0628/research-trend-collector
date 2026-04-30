@@ -52,6 +52,21 @@ tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch
 
 #### 보고서 템플릿
 
+보고서는 반드시 다음 YAML front matter로 시작합니다(README 인덱서가 이 메타데이터를 파싱합니다).
+
+```yaml
+---
+type: trend-report
+topic: "<사람이 읽을 수 있는 토픽명>"
+slug: <topic-slug>
+date: <YYYY-MM-DD>
+source: interests/<file>
+time_range: "<range>"
+depth: <overview|deep>
+language: <ko|en>
+---
+```
+
 ```markdown
 # <Topic> — Research Trend Report (<YYYY-MM-DD>)
 
@@ -67,7 +82,9 @@ tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch
 ## 3. Recent Work
 | Year | Title | Authors | Venue | Contribution | Link |
 | --- | --- | --- | --- | --- | --- |
-| 2025 | ... | ... | NeurIPS '25 | ... | arXiv:xxxx.xxxxx |
+| 2025 | [Title](url) | ... | NeurIPS '25 | 한 줄 설명 | arXiv:xxxx.xxxxx |
+
+> 인덱서가 *Title* 셀의 마크다운 링크와 *Contribution* 셀(한 줄 설명)을 그대로 사용합니다. 링크가 없으면 *Link* 셀의 URL을 사용하므로 둘 중 한 곳에는 반드시 URL을 둡니다.
 
 ## 4. Open Problems
 - ...
