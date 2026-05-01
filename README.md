@@ -30,7 +30,7 @@ crontab -e
 > 아래 영역은 `report-indexer` 서브에이전트가 자동 갱신합니다. 마커 사이만 교체되며, 그 밖의 내용은 보존됩니다.
 
 <!-- BEGIN: AUTO-INDEX -->
-_마지막 업데이트: 2026-04-30 · 보고서 1개 · 논문 96편 · Deep-dive 0건_
+_마지막 업데이트: 2026-05-01 · 보고서 1개 · 논문 96편 · Deep-dive 1건_
 
 ### 📂 LLM KV 캐시 관리·최적화
 - Latest: [kv-cache-optimization-2026-04-30](reports/kv-cache-optimization-2026-04-30.md)
@@ -83,8 +83,10 @@ _마지막 업데이트: 2026-04-30 · 보고서 1개 · 논문 96편 · Deep-di
   - [Cache-Craft](https://arxiv.org/abs/2502.15734) — RAG 청크 캐시 관리 시스템으로 KV 재사용 체계화
   - [RULER](https://arxiv.org/abs/2404.06654) — 장문맥 실질 활용 능력 종합 벤치마크
   - [SCBench](https://arxiv.org/abs/2412.10319) — KV 캐시 중심 장문맥 분석 전용 벤치마크
+- 관련 Deep-dive:
+  - [InfoBlend: Storing and Reusing KV Caches of Multimodal Information without Positional Restriction](reports/deep-dives/infoblend-multimodal-kv-reuse.md)
 
 ### 🔬 Deep Dives
-_(현재 없음)_
+- [InfoBlend: Storing and Reusing KV Caches of Multimodal Information without Positional Restriction](reports/deep-dives/infoblend-multimodal-kv-reuse.md) — 멀티모달 LLM 추론에서 이미지·텍스트 KV 캐시를 위치(prefix) 제약 없이 디스크에 저장·재사용하면서, 이미지 토큰 앞부분의 anchor 토큰만 선택적으로 재계산해 정확도 손실은 최소화하고 TTFT는 최대 54.1% 줄이며 처리량을 약 2.0배 향상. (원문: [OpenReview](https://openreview.net/forum?id=bld5GVRad0))
 
 <!-- END: AUTO-INDEX -->
