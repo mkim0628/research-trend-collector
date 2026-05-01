@@ -17,7 +17,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BRANCH="${BRANCH:-claude/research-trend-agent-setup-dwP6M}"
+BRANCH="${BRANCH:-claude/jolly-ride-Ylhvy}"
 cd "$REPO_DIR"
 
 LOG_DIR="$REPO_DIR/.logs"
