@@ -130,23 +130,19 @@ one_line_summary: "<한 줄 요약>"
 - 인덱스는 토픽별로 묶이며 각 항목은 `[Paper Title](link) — 한 줄 설명` 형식이다. Deep-dive는 별도 섹션으로 분리해 표기한다.
 - 동일 논문이 여러 보고서에 등장하면 가장 최근 보고서의 항목으로 통일하고 중복 제거한다.
 
-## 자동 스케줄링 (매일 새벽 5시)
+## 자동 스케줄링
 
-`scripts/daily-collect.sh`가 `interests/*.{yaml,md}` (단, `example.*` 제외) 전체를 순회하며 Claude Code를 비대화형으로 호출해 일일 보고서를 만들고, 변경이 있으면 작업 브랜치에 커밋·푸시한다. 로그는 `.logs/daily-<YYYY-MM-DD>.log`에 남는다(.gitignore 처리됨).
+일일 동향 수집은 [Claude Code Routines](https://claude.ai/code/routines)에서 매일 실행되는 루틴으로 관리한다. 호스트 cron이나 셸 스크립트는 사용하지 않는다.
 
-호스트에서 한 번만 등록한다.
+루틴 설정:
+- **Repository**: `mkim0628/research-trend-collector`
+- **Trigger**: Schedule — 원하는 시각(예: 매일 05:00)
+- **Prompt 예시**: `interests/ 아래 example.* 를 제외한 모든 명세 파일에 대해 /collect-trends 를 실행하고, 변경이 있으면 main 브랜치에 커밋·푸시해줘.`
 
-```bash
-chmod +x scripts/daily-collect.sh
-crontab -e
-# 다음 한 줄 추가 (절대 경로 사용):
-# 0 5 * * * /ABS/PATH/research-trend-collector/scripts/daily-collect.sh
-```
+## 브랜치 정책
 
-전제 조건:
-- `claude` CLI가 PATH에 있고 인증되어 있음 (`ANTHROPIC_API_KEY` 또는 사전 로그인).
-- 작업 브랜치(기본 `main`)에 푸시 권한이 있는 git 자격 증명이 cron 사용자 환경에 설정되어 있음. 다른 브랜치를 쓰려면 `BRANCH=...` 환경 변수로 덮어쓴다.
-- 스크립트는 cron 환경에서 권한 프롬프트에 응답할 수 없으므로 `--dangerously-skip-permissions`로 실행된다 — 이 리포 외부 시스템에서는 사용하지 말 것.
+- 모든 작업(슬래시 커맨드 실행 결과, 수동 변경, 루틴 산출물)은 **`main` 브랜치에 직접 커밋·푸시**한다.
+- 별도의 작업 브랜치나 PR 흐름은 사용하지 않는다.
 
 ## 작업 원칙
 

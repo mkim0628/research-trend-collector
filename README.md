@@ -14,16 +14,13 @@
 
 ## 자동 실행
 
-매일 새벽 5시에 모든 `interests/*` 파일에 대해 `/collect-trends`를 비대화형으로 실행하려면 [`scripts/daily-collect.sh`](scripts/daily-collect.sh)를 호스트의 cron에 등록하세요.
+매일 동향 수집을 자동으로 돌리려면 [Claude Code Routines](https://claude.ai/code/routines)에서 새 루틴을 만드세요.
 
-```bash
-chmod +x scripts/daily-collect.sh
-crontab -e
-# 다음 한 줄 추가 (절대 경로):
-# 0 5 * * * /ABS/PATH/research-trend-collector/scripts/daily-collect.sh
-```
+- **Repository**: `mkim0628/research-trend-collector`
+- **Trigger**: Schedule — 매일 원하는 시각
+- **Prompt** 예시: `interests/ 아래 example.* 를 제외한 모든 명세 파일에 대해 /collect-trends 를 실행하고, 변경이 있으면 main 브랜치에 커밋·푸시해줘.`
 
-자세한 전제 조건은 [`CLAUDE.md`](CLAUDE.md)의 "자동 스케줄링" 섹션을 참고하세요.
+루틴은 Anthropic 클라우드에서 실행되므로 호스트 cron이나 로컬 셸 스크립트는 필요 없습니다.
 
 ## Reports Index
 
