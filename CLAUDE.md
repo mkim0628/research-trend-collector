@@ -145,7 +145,7 @@ crontab -e
 
 전제 조건:
 - `claude` CLI가 PATH에 있고 인증되어 있음 (`ANTHROPIC_API_KEY` 또는 사전 로그인).
-- 작업 브랜치(기본 `claude/research-trend-agent-setup-dwP6M`)에 푸시 권한이 있는 git 자격 증명이 cron 사용자 환경에 설정되어 있음. 다른 브랜치를 쓰려면 `BRANCH=...` 환경 변수로 덮어쓴다.
+- 작업 브랜치(기본 `main`)에 푸시 권한이 있는 git 자격 증명이 cron 사용자 환경에 설정되어 있음. 다른 브랜치를 쓰려면 `BRANCH=...` 환경 변수로 덮어쓴다.
 - 스크립트는 cron 환경에서 권한 프롬프트에 응답할 수 없으므로 `--dangerously-skip-permissions`로 실행된다 — 이 리포 외부 시스템에서는 사용하지 말 것.
 
 ## 작업 원칙

@@ -11,13 +11,13 @@
 #
 # 환경 변수:
 #   ANTHROPIC_API_KEY  — Claude Code가 인증에 사용 (또는 `claude` CLI에 미리 로그인)
-#   BRANCH             — 푸시 대상 브랜치 (기본: claude/research-trend-agent-setup-dwP6M)
+#   BRANCH             — 푸시 대상 브랜치 (기본: main)
 # ──────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BRANCH="${BRANCH:-claude/research-trend-agent-setup-dwP6M}"
+BRANCH="${BRANCH:-main}"
 cd "$REPO_DIR"
 
 LOG_DIR="$REPO_DIR/.logs"
