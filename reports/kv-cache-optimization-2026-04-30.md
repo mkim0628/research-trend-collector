@@ -11,259 +11,373 @@ language: ko
 
 # LLM KV 캐시 관리·최적화 동향 보고서
 
-**조사 기간**: 2023-01 ~ 2026-04  
-**작성일**: 2026-04-30  
-**깊이**: Overview
+**날짜:** 2026-04-30 | **기간:** 2023-01 ~ 2026-04 | **깊이:** overview
 
 ---
 
 ## 1. Executive Summary
 
-**메모리 가상화와 연속 배치(continuous batching)의 정착**: 2023년 vLLM의 PagedAttention이 가상 메모리 방식의 KV 캐시 관리를 정립하면서, 단편화 없는 KV 할당과 연속 배치가 LLM 서빙의 사실상 표준이 되었다. 이후 거의 모든 상용·오픈소스 서빙 프레임워크가 이 패러다임을 채택했다.
+### 트렌드 1: MLA(Multi-head Latent Attention) 아키텍처의 급속한 확산
+DeepSeek-V2가 MLA를 도입해 KV 캐시를 기존 대비 93.3% 절감하고 처리량 5.76×를 달성한 이후([arXiv 2024](https://arxiv.org/abs/2405.04434)), DeepSeek-V3(671B MoE)까지 MLA를 확장 적용하였다([arXiv 2024](https://arxiv.org/abs/2412.19437)). 2025~2026년에는 기존 MHA/GQA 모델을 MLA로 사후 변환하는 TransMLA([NeurIPS 2025](https://arxiv.org/abs/2502.07864)), MHA2MLA([ACL 2025](https://arxiv.org/abs/2502.14837)) 연구가 등장하며 사전학습 재비용 없이 MLA의 이점을 누리는 방향으로 생태계가 확장되고 있다.
 
-**프리픽스 재사용과 RadixAttention의 부상**: SGLang의 RadixAttention(2024)이 트라이(trie) 기반 KV 재사용을 구현하면서, 시스템 프롬프트·멀티턴 대화·RAG 파이프라인에서의 캐시 히트율을 획기적으로 높였다. 이는 단순 메모리 절감을 넘어 응답 지연(TTFT)을 대폭 줄이는 시스템 설계 혁신이다.
+### 트렌드 2: Prefill/Decode(P/D) 분리 서빙의 성숙과 상용화
+P/D를 별도 인스턴스로 분리해 SLO와 처리량을 함께 개선하는 접근이 DistServe([OSDI 2024](https://arxiv.org/abs/2401.09670)), Splitwise([ISCA 2024](https://arxiv.org/abs/2311.18677)), Mooncake([FAST 2025 Best Paper](https://arxiv.org/abs/2407.00079)) 등을 거쳐 상용 서비스에 적용되고 있다. 2025~2026년에는 FlowKV([arXiv 2025](https://arxiv.org/abs/2504.03775))가 KV 전송 지연을 96% 감소시키고, Nexus([arXiv 2025](https://arxiv.org/abs/2507.06608))가 단일 GPU 내 SM 수준 P/D 분리를 제안하는 등 분리 서빙의 세밀도가 높아지고 있다. vLLM도 chunked prefill과 Automatic Prefix Caching(APC)을 기본 활성화하며 이 방향을 채택하였다([vLLM Blog 2025](https://vllm.ai/blog/vllm-2024-wrapped-2025-vision)).
 
-**아키텍처 수준의 KV 절감—DeepSeek-V2 MLA**: DeepSeek-V2(2024)가 제안한 Multi-head Latent Attention(MLA)은 KV를 저랭크 잠재 벡터로 압축해 표준 MHA 대비 93.3% KV 캐시 절감을 달성했다. 이는 소프트웨어 최적화가 아닌 모델 아키텍처 수준의 접근으로, 이후 여러 모델이 유사 설계를 채택하고 있다.
+### 트렌드 3: 극단적 KV 양자화 — 2-bit 이하로의 진입
+2024년 KIVI([ICML 2024](https://arxiv.org/abs/2402.02750))의 2-bit 양자화 이후, CQ([NeurIPS 2024](https://arxiv.org/abs/2405.03917))의 채널당 1-bit, SVDq([arXiv 2025](https://arxiv.org/abs/2502.15304))의 Key 1.25-bit 등 극단적 압축 연구가 이어지고 있다. KVTuner([ICML 2025](https://arxiv.org/abs/2502.04420))와 MiniKV([ACL 2025](https://arxiv.org/abs/2411.18077))는 레이어별 민감도 분석과 토큰 선택을 결합해 3-bit 수준에서 거의 무손실 성능을 실현하고 있다. 양자화와 저랭크 분해를 결합(Palu, xKV)하거나 Long-CoT에 특화(PM-KVQ)하는 방향도 부상하고 있다.
 
-**양자화와 토큰 축출의 성숙**: KIVI, KVQuant, SnapKV, PyramidKV 등 2-4비트 KV 양자화 및 중요도 기반 토큰 축출 기법이 실용화 단계에 진입했다. 단순 eviction에서 계층별 차등 할당, 쿼리 인식(query-aware) 선택으로 진화 중이다.
+### 트렌드 4: 강화학습(RL) 기반 지능형 KV 축출 정책의 등장
+중요도 휴리스틱 기반 축출(SnapKV, StreamingLLM 등)에서 벗어나, 미래 어텐션 패턴을 예측하거나 RL로 최적 축출 정책을 학습하는 방향이 2025~2026년에 급부상하였다. ForesightKV([arXiv 2026](https://arxiv.org/abs/2602.03203))는 RL 기반 장기 기여도 예측으로 절반 예산에서 AIME SOTA를 초과하였고, LookaheadKV([arXiv 2026](https://arxiv.org/abs/2603.10899))는 Lookahead LoRA로 미래 어텐션 패턴을 예측한다. Expected Attention([arXiv 2025](https://arxiv.org/abs/2510.00636))은 미래 쿼리 분포를 활용해 KV 중요도를 사전에 추정하는 방법을 제안하였다.
 
-**Prefill-Decode 분리 서빙의 등장**: DistServe(OSDI 2024), Splitwise(ISCA 2024), Mooncake(2024) 등이 Prefill과 Decode 단계를 물리적으로 분리해 자원 활용률과 SLO 달성률을 높이는 아키텍처를 제안했다. KV 캐시 전송 비용이 새로운 핵심 병목으로 부상했다.
+### 트렌드 5: CXL·신규 메모리 계층을 활용한 KV 오프로딩 인프라 확장
+GPU DRAM의 한계를 넘어 CPU DRAM, CXL 확장 메모리, FPGA/PNM 등 이종 메모리 계층을 KV 캐시에 활용하는 연구가 2025년부터 본격화되었다. TraCT([arXiv 2025](https://arxiv.org/abs/2512.18194))는 CXL 공유 메모리로 TTFT를 9.8× 감소시켰고, CXL-PNM([arXiv 2025](https://arxiv.org/abs/2511.00321))은 CXL 내 근방 메모리 연산으로 1M 토큰 서빙을 단일 노드에서 실현하였다. ShadowKV([ICML 2025](https://arxiv.org/abs/2410.21465))와 SpeCache([ICML 2025](https://arxiv.org/abs/2503.16163))는 GPU/CPU 협력 전략으로 처리량과 압축률을 동시에 달성하였다.
 
 ---
 
-## 2. Landscape
+## 2. Landscape — 분야 지형도
 
-### 2.1 분야 지형도
-
-LLM 추론에서 KV 캐시 최적화는 크게 7개 서브토픽으로 나뉜다.
+LLM KV 캐시 최적화는 2023년 이후 크게 7개 서브토픽으로 수렴하고 있다.
 
 ```
-KV 캐시 최적화
-├── 메모리 관리·할당
-│   ├── PagedAttention / 가상 메모리 방식
-│   └── 연속 배치(continuous batching)와의 통합
-├── 압축·양자화
-│   ├── 비트 폭 축소 (KIVI, KVQuant, IntactKV)
-│   └── 저랭크 분해 (MLA, CLA)
-├── 토큰 선택·축출
-│   ├── 중요도 기반 (H2O, StreamingLLM, Scissorhands)
-│   └── 쿼리 인식 (SnapKV, Quest, PyramidKV, FastGen)
-├── 프리픽스·세션 캐시 재사용
-│   ├── 트라이 기반 (RadixAttention / SGLang)
-│   └── 시스템 프롬프트 공유, 멀티 사용자 캐시 공유
-├── 아키텍처 수준 절감
-│   ├── MQA / GQA / MLA
-│   └── Cross-layer sharing, sliding window attention
-├── 분산·분리 서빙
-│   ├── Prefill-Decode 분리 (DistServe, Splitwise, Mooncake)
-│   └── KV 마이그레이션·전송 최적화
-└── 계층적 오프로딩
-    ├── GPU ↔ CPU 오프로딩
-    └── CPU ↔ NVMe 오프로딩 (InfLLM, FlexGen)
+LLM KV 캐시 최적화
+├── A. 서빙 시스템·메모리 관리
+│   ├── PagedAttention / 가상 메모리 매핑 (vLLM, vAttention)
+│   ├── Chunked Prefill / APC (vLLM, Sarathi-Serve)
+│   ├── 희소 어텐션 커널 (FlashInfer, MInference)
+│   └── 투기적 디코딩 연동 (EAGLE, EAGLE-2)
+│
+├── B. KV 양자화·압축
+│   ├── 균일/비균일 정수 양자화 (KIVI, KVQuant, CQ)
+│   ├── 혼합 정밀도·레이어별 적응 (KVTuner, KITTY, PM-KVQ)
+│   ├── 저랭크 분해 (Palu, SVDq, xKV, MFA)
+│   └── 토큰 선택·가지치기 결합 (MiniKV, ZipCache, MixKVQ)
+│
+├── C. 토큰 축출·희소 어텐션
+│   ├── 중요도 점수 기반 축출 (SnapKV, StreamingLLM 계열)
+│   ├── 쿼리 인식·페이지 선택 (Quest, HashEvict)
+│   ├── 헤드별 적응 예산 (Ada-KV, HeadKV, DuoAttention)
+│   └── 미래 예측·RL 기반 (ForesightKV, LookaheadKV, Expected Attention)
+│
+├── D. 분산·분리 서빙 및 KV 전송
+│   ├── Prefill/Decode 분리 (DistServe, Splitwise, Mooncake)
+│   ├── KV 전송 최적화 (FlowKV, CacheGen, LMCache)
+│   ├── 분산 KV 스토어 (Preble, KVShare, BanaServe)
+│   └── SM 수준/멀티모달 분리 (Nexus, HydraInfer)
+│
+├── E. 아키텍처 수준 KV 절감
+│   ├── MLA 계열 (DeepSeek-V2/V3, TransMLA, MHA2MLA)
+│   ├── Cross-layer KV 공유 (CLA, LCKV, KVSharer)
+│   ├── 단일 KV 저장 (YOCO, YOCO++)
+│   └── 텐서 분해 (TPA, MFA, MTLA)
+│
+├── F. 장문맥·계층적 오프로딩
+│   ├── CPU 오프로딩 (InfiniGen, MagicPIG, RetrievalAttention)
+│   ├── CXL 확장 메모리 (TraCT, CXL-SpecKV, CXL-PNM, CXL-NDP)
+│   └── 투기적 프리페치 (SpeCache, ScoutAttention, Async KV Prefetch)
+│
+└── G. RAG·평가 방법론
+    ├── RAG KV 재사용·융합 (RAGCache, CacheBlend, Cache-Craft)
+    └── 벤치마크 (RULER, SCBench, MILLION)
 ```
 
-### 2.2 주요 접근법 분류
+### 주요 흐름 간 상호작용
 
-| 접근법 | 대표 기법 | 메모리 절감 | 품질 손실 | 지연 영향 |
-|--------|-----------|------------|----------|----------|
-| 가상 메모리 관리 | PagedAttention | 단편화 제거 (~40%) | 없음 | 처리량 2-4x ↑ |
-| 프리픽스 재사용 | RadixAttention | 중복 제거 (워크로드 의존) | 없음 | TTFT 최대 5x ↓ |
-| 아키텍처 압축 (MLA) | DeepSeek-V2 | 93.3% | 미미 | 처리량 ↑ |
-| KV 양자화 | KIVI (2-bit) | ~75% | perplexity +0.1~0.3 | 경미한 decode 오버헤드 |
-| 토큰 축출 | H2O (20% 유지) | ~80% | 태스크 의존적 | decode latency ↓ |
-| GQA (8 groups) | Llama 2/3 | ~87.5% (32head→4) | 미미 | MHA 대비 동등 |
-| 계층적 오프로딩 | InfLLM | GPU 사용량 ~50% ↓ | 미미 | prefetch로 은닉 |
-| P-D 분리 서빙 | DistServe | SLO 달성률 ↑ | 없음 | P99 latency ↓ |
+- **B + C 결합**: 양자화와 토큰 축출을 함께 최적화하는 연구(MiniKV, ZipCache)가 증가하고 있다.
+- **E → D**: MLA 기반 모델의 KV가 작아짐에 따라 P/D 분리 시 전송 비용이 줄어 분산 서빙의 경제성이 높아진다.
+- **F → A**: CXL 계층이 GPU HBM의 연장선처럼 활용되면서 서빙 시스템의 메모리 관리 정책이 재설계되고 있다.
+- **Long-CoT 특화**: Reasoning 모델(DeepSeek-R1 계열)이 수천 토큰 이상의 중간 추론을 생성하면서, 긴 생성 단계에서의 KV 관리(PM-KVQ, ForesightKV, LServe)가 별도 연구 방향으로 부상하였다.
 
 ---
 
 ## 3. Recent Work
 
-### 3.1 메모리 관리·연속 배치
+### A. 서빙 시스템·메모리 관리
 
-| Title | Venue / Year | Contribution |
-|-------|--------------|--------------|
-| [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) | SOSP 2023 | 가상 메모리 방식 KV 블록 관리로 단편화 제거, 처리량 2~4x 향상 (vLLM 기반) |
-| [SGLang: Efficient Execution of Structured Language Model Programs](https://arxiv.org/abs/2312.07104) | OSDI 2024 / arXiv 2312.07104 | RadixAttention으로 트라이 기반 KV 자동 재사용; TTFT 최대 5x 감소, 처리량 4.4x 향상 |
-| [Sarathi-Serve: Efficient LLM Inference by Piggybacking Decodes with Chunked Prefills](https://arxiv.org/abs/2308.16369) | OSDI 2024 | Chunked prefill로 decode stall 제거, 배치 효율 향상 |
+| 논문 | Venue/Year | Contribution |
+|------|-----------|-------------|
+| [vLLM 2024 Wrapped & 2025 Vision](https://vllm.ai/blog/vllm-2024-wrapped-2025-vision) | vLLM Blog 2025 | chunked prefill 기본 활성화, APC·speculative decoding·disaggregated prefill 통합 |
+| [SGLang: Efficient Execution of Structured Language Model Programs](https://arxiv.org/abs/2312.07104) | NeurIPS 2024 | RadixAttention 자동 KV 재사용; 처리량 6.4×↑, few-shot cache hit rate 85~95% |
+| [SGLang v0.4](https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/) | LMSYS Blog 2024-12 | Zero-Overhead Batch Scheduler + Cache-Aware LB; 처리량 1.3×↑, MLA 7×↑ |
+| [Sarathi-Serve](https://arxiv.org/abs/2403.02310) | OSDI 2024 | stall-free chunked prefill; Mistral-7B 2.6×, Falcon-180B 5.6×↑ |
+| [FlashInfer](https://arxiv.org/abs/2501.01005) | MLSys 2025 Best Paper | 블록 희소 포맷 + JIT 컴파일 어텐션 커널; ITL 29~69%↓ |
+| [vAttention](https://arxiv.org/abs/2405.04437) | ASPLOS 2025 | CUDA 가상 메모리 동적 KV 할당; PagedAttention 오버헤드 제거, 처리량 1.23×↑ |
+| [POD-Attention](https://arxiv.org/abs/2410.18038) | ASPLOS 2025 | 동일 GPU에서 prefill·decode 어텐션 동시 실행; 서빙 처리량 22%↑ |
+| [LServe](https://arxiv.org/abs/2502.14866) | MLSys 2025 | prefill/decode 통합 희소 어텐션; prefill 2.9×, decode 1.3~2.1×↑ |
+| [QServe](https://arxiv.org/abs/2405.04532) | MLSys 2025 | W4A8KV4 양자화 서빙 시스템; Qwen1.5-72B 2.4~3.5×↑ |
+| [NanoFlow](https://arxiv.org/abs/2408.12757) | arXiv 2024 | nano-batch intra-device 병렬성; SOTA 대비 1.91×↑ |
+| [BatchLLM](https://arxiv.org/abs/2412.03594) | arXiv 2024 | 글로벌 prefix KV 공유 최적화; 처리량 1.3~10.8×↑ |
+| [TetriInfer](https://arxiv.org/abs/2401.11181) | arXiv 2024 | chunked prefill + P/D 분리; TTFT 97%↓, JCT 47%↓ |
+| [ThunderServe](https://arxiv.org/abs/2502.09334) | arXiv 2025 | 이종 클라우드 배포 최적화; 처리량 2.1×↑ |
+| [Preble](https://arxiv.org/abs/2407.00023) | arXiv 2024 | 분산 프롬프트 스케줄링; 평균 지연 1.5~14.5×↓, p99 2~10×↓ |
+| [EAGLE](https://arxiv.org/abs/2401.15077) | ICML 2024 | 피처 기반 투기적 디코딩; 속도 2.7~3.5×↑ |
+| [EAGLE-2](https://arxiv.org/abs/2406.16858) | EMNLP 2024 | 동적 드래프트 트리 투기적 디코딩으로 수용률 향상 |
+| [VIDUR](https://arxiv.org/abs/2405.05465) | MLSys 2024 | LLM 추론 고충실도 시뮬레이션·구성 탐색 도구 |
+| [DualMap](https://arxiv.org/abs/2602.06502) | arXiv 2026 | KV affinity + 부하 분산 동시 달성 스케줄러 |
+| [LMCache](https://arxiv.org/abs/2510.09665) | arXiv 2025 | GPU 외부 계층 KV 스토어; 처리량 15×↑, TTFT 11s→1.5s |
 
-### 3.2 Prefill-Decode 분리 서빙
+### B. KV 양자화·압축
 
-| Title | Venue / Year | Contribution |
-|-------|--------------|--------------|
-| [DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving](https://arxiv.org/abs/2401.09670) | OSDI 2024 | Prefill/Decode 물리 분리로 GPU 활용률 최적화, SLO 달성률 크게 향상 |
-| [Splitwise: Efficient Generative LLM Inference Using Phase Splitting](https://arxiv.org/abs/2311.18677) | ISCA 2024 | 단계 분리 + 이종 GPU 클러스터 활용, 비용 20% 절감 |
-| [Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving](https://arxiv.org/abs/2407.00079) | USENIX ATC 2024 | KV 풀을 독립 레이어로 분리, 분산 KV 전송·스케줄링 최적화 |
-| [P/D-Serve: Serving Disaggregated Large Language Model at Scale](https://arxiv.org/abs/2408.08147) | SC 2024 | 대규모 P-D 분리 서빙에서 KV 마이그레이션 오버헤드 완화 |
+| 논문 | Venue/Year | Contribution |
+|------|-----------|-------------|
+| [KIVI](https://arxiv.org/abs/2402.02750) | ICML 2024 | 파인튜닝 없는 비대칭 2-bit KV 양자화; 메모리 2.6×↓, 배치 2.35~3.47×↑ |
+| [KVQuant](https://arxiv.org/abs/2401.18079) | NeurIPS 2024 | per-channel 비균일 3-bit 양자화; 단일 GPU 1M 컨텍스트 달성 |
+| [CQ](https://arxiv.org/abs/2405.03917) | NeurIPS 2024 | 채널 결합 양자화; 채널당 1-bit 달성, 처리량 1.4~3.5×↑ |
+| [ZipCache](https://arxiv.org/abs/2405.14256) | NeurIPS 2024 | salient 토큰 식별 기반 적응 비트폭; 4.98× 압축, 지연 56.9%↓ |
+| [MiniCache](https://arxiv.org/abs/2405.14366) | NeurIPS 2024 | 인접 레이어 KV 유사성 기반 깊이 차원 병합으로 메모리 절감 |
+| [Palu](https://arxiv.org/abs/2407.21118) | ICLR 2025 | KV 프로젝션 SVD 저랭크 분해; 50% 압축 1.89×, 양자화 결합 2.91×↑ |
+| [KVTuner](https://arxiv.org/abs/2502.04420) | ICML 2025 | 레이어별 민감도 분석 혼합 정밀도; 3.25-bit에서 거의 무손실 |
+| [MiniKV](https://arxiv.org/abs/2411.18077) | ACL 2025 | 2-bit + 토큰 선택 공동 설계; 86% 압축, 처리량 48%↑ |
+| [AsymKV](https://arxiv.org/abs/2410.13212) | COLING 2025 | 1-bit Value 레이어별 비대칭 양자화; 75% 레이어 1-bit로 FP16 수준 유지 |
+| [LogQuant](https://arxiv.org/abs/2503.19950) | arXiv 2025 | 로그 분포 필터링 2-bit 양자화; 처리량 25%↑, Math 40~200%↑ |
+| [KITTY](https://arxiv.org/abs/2511.18643) | arXiv 2025 | 채널 민감도 기반 동적 혼합 정밀도; 처리량 2.1~4.1×↑ |
+| [xKV](https://arxiv.org/abs/2503.18893) | arXiv 2025 | 크로스레이어 SVD 압축; SOTA 대비 6.8× 압축, 정확도 2.7%↑ |
+| [SVDq](https://arxiv.org/abs/2502.15304) | arXiv 2025 | SVD + 혼합 정밀도; Key 1.25-bit, 410× 압축 달성 |
+| [MixKVQ](https://arxiv.org/abs/2512.19206) | arXiv 2024 | 쿼리 인식 혼합 정밀도; KV 79%↓, AIME 성능 유지 |
+| [PM-KVQ](https://openreview.net/forum?id=Vem6FQvRvq) | arXiv 2025 | Long-CoT용 누진적 혼합 정밀도; 처리량 2.73~5.18×↑ |
+| [KVTC](https://arxiv.org/abs/2511.01815) | ICLR 2026 | PCA + 적응 양자화 + 엔트로피 코딩; 최대 20×(특수 용도 40×) 압축 |
+| [WKVQuant](https://arxiv.org/abs/2402.12065) | arXiv 2024 | 가중치 + KV 동시 양자화 PTQ 통합 프레임워크 |
+| [RVQ-KV](https://arxiv.org/abs/2410.15704) | arXiv 2024 | 잔차 벡터 양자화 KV; FP16 대비 5.5× 압축 |
 
-### 3.3 아키텍처 수준 KV 절감
+### C. 토큰 축출·희소 어텐션
 
-| Title | Venue / Year | Contribution |
-|-------|--------------|--------------|
-| [DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model](https://arxiv.org/abs/2405.04434) | arXiv 2405.04434 (2024) | MLA(Multi-head Latent Attention)로 KV를 저랭크 잠재 벡터 압축; MHA 대비 93.3% KV 절감 |
-| [GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints](https://arxiv.org/abs/2305.13245) | ACL 2023 Findings | MHA→MQA 업스케일 학습 기법 및 GQA 제안; KV 헤드 1/8로 감소 |
-| [Cross-Layer Attention Sharing for Large Language Models](https://arxiv.org/abs/2405.12981) | arXiv 2405.12981 (2024) | 인접 레이어 KV 공유로 KV 메모리 최대 50% 절감, 성능 유지 |
+| 논문 | Venue/Year | Contribution |
+|------|-----------|-------------|
+| [Quest](https://arxiv.org/abs/2406.10774) | ICML 2024 | 쿼리 인식 KV 페이지 선택; 추론 지연 7.03×↓ |
+| [MInference](https://arxiv.org/abs/2407.02490) | NeurIPS 2024 | 동적 희소 프리필 어텐션; 1M 토큰 추론 30분→3분 |
+| [NACL](https://arxiv.org/abs/2408.03675) | ACL 2024 | 프록시 + 무작위 결합 축출; KV 50%↓에서 성능 76~80% 유지 |
+| [DuoAttention](https://arxiv.org/abs/2410.10819) | arXiv 2024 | Retrieval/Streaming 헤드 이분화 차등 KV 관리 |
+| [HeadKV](https://arxiv.org/abs/2410.19258) | arXiv 2024 | 헤드별 검색·추론 능력 기반 KV 예산 차등 할당 |
+| [HashEvict](https://arxiv.org/abs/2412.16187) | arXiv 2024 | LSH 기반 프리어텐션 축출; FastGen 대비 프리필 17×↑ |
+| [Ada-KV](https://arxiv.org/abs/2407.11550) | NeurIPS 2025 | 헤드별 적응 KV 예산 할당로 고정 예산 대비 성능 향상 |
+| [TokenSelect](https://arxiv.org/abs/2411.02886) | EMNLP 2025 | 비연속 희소성 기반 KV 선택; 어텐션 23.84×↑, 지연 2.28×↓ |
+| [ChunkKV](https://arxiv.org/abs/2502.00299) | NeurIPS 2025 | 의미 청크 단위 KV 선택; 처리량 26.5%↑ |
+| [RocketKV](https://arxiv.org/abs/2502.14051) | arXiv 2025 | 2단계 압축(SnapKV++ + HSA); 400× 압축, 속도 3.7×↑ |
+| [FastKV](https://arxiv.org/abs/2502.01068) | arXiv 2025 | TSP로 프리필·디코딩 분리 가속; 처리량 1.97×↑ |
+| [DefensiveKV](https://arxiv.org/abs/2510.13334) | arXiv 2025 | 축출 취약성 분석 + 방어적 집계; 품질 손실 2.6~4.8% |
+| [Expected Attention](https://arxiv.org/abs/2510.00636) | arXiv 2025 | 미래 쿼리 분포로 KV 중요도 사전 추정 |
+| [LAVa](https://arxiv.org/abs/2509.09754) | EMNLP 2025 | 잔차 스트림 손실 기반 헤드·레이어 동적 예산 할당 |
+| [CAOTE](https://arxiv.org/abs/2504.14051) | arXiv 2025 | 어텐션 출력 오차 최소화 기반 축출 정책 |
+| [ForesightKV](https://arxiv.org/abs/2602.03203) | arXiv 2026 | RL 기반 장기 기여도 예측 축출; AIME 절반 예산으로 SOTA 초과 |
+| [LookaheadKV](https://arxiv.org/abs/2603.10899) | arXiv 2026 | Lookahead LoRA로 미래 어텐션 패턴 예측 기반 축출 |
 
-### 3.4 KV 양자화·압축
+### D. 분산·분리 서빙 및 KV 전송
 
-| Title | Venue / Year | Contribution |
-|-------|--------------|--------------|
-| [KIVI: A Tuning-Free Asymmetric 2bit Quantization for KV Cache](https://arxiv.org/abs/2402.02750) | ICML 2024 | Key 2-bit/Value 2-bit 비대칭 양자화; 2.6x 메모리 절감, perplexity 손실 ~0.1 |
-| [KVQuant: Towards 10 Million Context Length LLM Inference with KV Cache Quantization](https://arxiv.org/abs/2401.18079) | NeurIPS 2024 | 채널·토큰별 차별화 양자화; 10M 컨텍스트 추론 가능, 3-4x 압축 |
-| [WKVQuant: Quantizing Weight and Key/Value Cache for Large Language Models](https://arxiv.org/abs/2402.12065) | arXiv 2402.12065 (2024) | 가중치·KV 캐시 동시 양자화로 메모리 효율 극대화 |
-| [IntactKV: Improving Large Language Model Quantization by Keeping Pivot Tokens Intact](https://arxiv.org/abs/2403.01241) | ACL 2024 | 중요 피벗 토큰 KV는 full precision 유지, 나머지 저비트 양자화 |
-| [Coupled Quantization: Accurate 1-Bit Post-Training Weight Quantization of Large Language Models](https://arxiv.org/abs/2402.11295) | arXiv (2024) | KV 포함 극단적 저비트 양자화 탐색 |
+| 논문 | Venue/Year | Contribution |
+|------|-----------|-------------|
+| [DistServe](https://arxiv.org/abs/2401.09670) | OSDI 2024 | P/D 분리로 goodput 최적화; 요청처리 7.4×↑, 엄격한 SLO 12.6×↑ |
+| [Splitwise](https://arxiv.org/abs/2311.18677) | ISCA 2024 | 이종 GPU P/D 분리; 처리량 1.4×↑, 비용 20%↓ |
+| [Mooncake](https://arxiv.org/abs/2407.00079) | FAST 2025 Best Paper | KV 중심 분리 아키텍처(Kimi 운영); 처리량 525%↑ |
+| [CacheGen](https://arxiv.org/abs/2310.07240) | SIGCOMM 2024 | KV 압축 비트스트림 전송; 크기 3.5~4.3×↓, 지연 3.2~3.7×↓ |
+| [CacheBlend](https://arxiv.org/abs/2405.16444) | EuroSys 2025 | RAG 멀티청크 KV 선택적 재계산 융합으로 정확도 보존 |
+| [LMCache](https://arxiv.org/abs/2510.09665) | arXiv 2025 | GPU 외부 계층 KV 스토어; 처리량 15×↑, TTFT 대폭 단축 |
+| [FlowKV](https://arxiv.org/abs/2504.03775) | arXiv 2025 | 저지연 KV 전송 + 부하 인식 스케줄링; KV 전송 지연 96%↓ |
+| [BanaServe](https://arxiv.org/abs/2510.13223) | arXiv 2025 | KV + 모듈 동적 마이그레이션; vLLM 대비 3.9×↑ |
+| [TraCT](https://arxiv.org/abs/2512.18194) | arXiv 2025 | CXL 공유 메모리 KV 풀; TTFT 9.8×↓, P99 6.2×↓ |
+| [CXL-SpecKV](https://arxiv.org/abs/2512.11920) | arXiv 2025 | CXL + FPGA KV 오프로딩; 처리량 3.2×↑ |
+| [ShadowKV](https://arxiv.org/abs/2410.21465) | ICML 2025 Spotlight | SVD K GPU 유지 + V CPU 오프로드; 배치 6×↑, 처리량 3.04×↑ |
+| [PrefillShare](https://arxiv.org/abs/2602.12029) | arXiv 2026 | 다중 LLM 공유 Prefill 모듈; p95 지연 4.5×↓, 처리량 3.9×↑ |
+| [DualMap](https://arxiv.org/abs/2602.06502) | arXiv 2026 | KV affinity + 부하 균형 동시 달성 스케줄러 |
+| [KVShare](https://arxiv.org/abs/2503.16525) | arXiv 2025 | 멀티테넌트 의미론적 KV 재사용; TTFT 9.39×↓ |
+| [Nexus](https://arxiv.org/abs/2507.06608) | arXiv 2025 | 단일 GPU 내 SM 수준 P/D 분리 |
+| [HydraInfer](https://arxiv.org/abs/2505.12658) | arXiv 2025 | 멀티모달 LLM 하이브리드 P/D 분리; vLLM 대비 처리량 4×↑ |
 
-### 3.5 토큰 축출·선택
+### E. 아키텍처 수준 KV 절감 (MLA, Cross-layer 등)
 
-| Title | Venue / Year | Contribution |
-|-------|--------------|--------------|
-| [H2O: Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models](https://arxiv.org/abs/2306.14048) | NeurIPS 2023 | 누적 어텐션 점수 기반 중요 토큰(Heavy Hitter) 선택; KV 20% 유지로 성능 보존 |
-| [Efficient Streaming Language Models with Attention Sinks](https://arxiv.org/abs/2309.17453) | ICLR 2024 | 초기 토큰(attention sink) + 슬라이딩 윈도우로 무한 길이 생성; 22x 속도 향상 |
-| [SnapKV: LLM Knows What You are Looking for Before Generation](https://arxiv.org/abs/2404.14469) | NeurIPS 2024 | 관찰 윈도우 기반 프롬프트별 중요 위치 자동 탐지; 처리량 3.6x 향상 |
-| [PyramidKV: Dynamic KV Cache Compression based on Pyramidal Information Funneling](https://arxiv.org/abs/2406.02069) | arXiv 2406.02069 (2024) | 레이어별 차등 KV 할당 (하위 레이어 더 적게); 평균 70% 압축, 성능 유지 |
-| [Quest: Query-Aware Sparsity for Efficient Long-Context LLM Inference](https://arxiv.org/abs/2406.10774) | ICML 2024 | 쿼리별 관련 KV 페이지 선택; 7.03x 디코딩 속도 향상 (128K 컨텍스트) |
-| [Scissorhands: Exploiting the Persistence of Importance Hypothesis for LLM KV Cache Compression](https://arxiv.org/abs/2305.17118) | NeurIPS 2023 | 어텐션 패턴의 지속성(persistence) 가설 검증; 중요 토큰 5% 유지로 품질 보존 |
-| [FastGen: Model Tells You What to Discard: Adaptive KV Cache Compression with Attention Gates](https://arxiv.org/abs/2310.01801) | ICLR 2024 | 어텐션 헤드별 압축 정책(attention sink / local / 특수 패턴) 자동 선택 |
+| 논문 | Venue/Year | Contribution |
+|------|-----------|-------------|
+| [DeepSeek-V2 (MLA)](https://arxiv.org/abs/2405.04434) | arXiv 2024 | Multi-head Latent Attention; KV 93.3%↓, 처리량 5.76×↑ |
+| [DeepSeek-V3](https://arxiv.org/abs/2412.19437) | arXiv 2024 | 671B MoE에 MLA 적용; KV 70KB vs LLaMA-3.1-405B 516KB |
+| [TransMLA](https://arxiv.org/abs/2502.07864) | NeurIPS 2025 Spotlight | GQA→MLA 사후 변환; KV 68.75%↓, 추론 10.6×↑ |
+| [MHA2MLA](https://arxiv.org/abs/2502.14837) | ACL 2025 | MHA→MLA 변환; KV 92.19%↓, 0.3~0.6% 데이터로 성능 회복 |
+| [X-EcoMLA](https://arxiv.org/abs/2503.11132) | arXiv 2025 | 사전학습 어텐션 MLA 업사이클링 방법론 |
+| [YOCO](https://arxiv.org/abs/2405.05254) | NeurIPS 2024 | 디코더-디코더 단일 KV 저장; 65B 기준 80×↓, 1M 프리필 71.8×↑ |
+| [YOCO++](https://arxiv.org/abs/2604.13556) | arXiv 2025 | YOCO + KV 잔차 연결로 성능 개선 |
+| [CLA](https://arxiv.org/abs/2405.12981) | arXiv 2024 | 인접 레이어 KV 공유; MQA 대비 2× 추가 KV 절감 |
+| [LCKV](https://arxiv.org/abs/2405.10637) | ACL 2024 | 최상위 레이어 KV만 캐시 재사용; 처리량 26×↑ |
+| [KVSharer](https://arxiv.org/abs/2410.18517) | arXiv 2024 | 비유사 레이어 KV 공유; 연산 30%↓, 속도 1.3×↑ |
+| [NSA](https://arxiv.org/abs/2502.11089) | ACL 2025 | DeepSeek 훈련 가능 희소 어텐션; 64K 시퀀스 전방향 가속 |
+| [TPA](https://arxiv.org/abs/2501.06425) | NeurIPS 2025 Spotlight | 텐서 분해 어텐션; KV 10×↓ |
+| [MFA](https://arxiv.org/abs/2412.19255) | arXiv 2024 | 행렬 인수분해 어텐션; MFA-KR 변형으로 KV 93.7%↓ |
+| [MTLA](https://arxiv.org/abs/2505.13544) | arXiv 2025 | 시간+공간 차원 동시 KV 압축; 속도 3.75×↑, GPU 메모리 7×↓ |
 
-### 3.6 어텐션 커널·효율화 (KV 관련)
+### F. 장문맥·계층적 오프로딩
 
-| Title | Venue / Year | Contribution |
-|-------|--------------|--------------|
-| [FlashInfer: Efficient and Customizable Attention Engine for LLM Inference Serving](https://arxiv.org/abs/2501.01005) | arXiv 2501.01005 (2025) | paged/ragged KV layout 지원 고속 어텐션 커널; 다양한 KV 관리 백엔드 통합 |
-| [FlashDecoding++: Faster Large Language Model Inference on GPUs](https://arxiv.org/abs/2311.01282) | MLSys 2024 | 디코딩 단계 병렬 reduce 최적화; prefill-decode 혼합 배치에서 KV 효율 향상 |
+| 논문 | Venue/Year | Contribution |
+|------|-----------|-------------|
+| [InfiniGen](https://arxiv.org/abs/2406.19707) | OSDI 2024 | CPU 오프로딩 + 선택적 GPU 프리페치; 기존 오프로딩 대비 3.0×↑ |
+| [MagicPIG](https://arxiv.org/abs/2410.16179) | arXiv 2024 | LSH GPU+CPU 협력; 처리량 1.5~5×↑, RTX4090 96K 디코딩 54ms |
+| [RetrievalAttention](https://arxiv.org/abs/2409.10516) | arXiv 2024 | ANNS 기반 CPU KV 검색; RTX4090에서 128K 8B 모델 서빙 |
+| [ShadowKV](https://arxiv.org/abs/2410.21465) | ICML 2025 Spotlight | SVD K GPU + V CPU 오프로드; 배치 6×↑, 처리량 3.04×↑ |
+| [SpeCache](https://arxiv.org/abs/2503.16163) | ICML 2025 | 1~2bit GPU + FP16 CPU 투기적 프리페치; 10× 압축 무손실 달성 |
+| [ScoutAttention](https://arxiv.org/abs/2603.27138) | arXiv 2026 | 레이어 선행 CPU 사전 계산; 기존 오프로딩 2.1×↑, 풀어텐션 5.1×↑ |
+| [InfiniteHiP](https://arxiv.org/abs/2502.08910) | arXiv 2025 | 계층적 토큰 프루닝 + LRU 오프로딩; L40s에서 3M 토큰 18.95×↑ |
+| [Async KV Prefetch](https://arxiv.org/abs/2504.06319) | arXiv 2025 | 비동기 KV 프리페치; H20 어텐션 2.15×↑, FA3 대비 처리량 1.97×↑ |
+| [CXL-PNM](https://arxiv.org/abs/2511.00321) | arXiv 2025 | CXL 내 근방 연산으로 단일 노드 1M 토큰 서빙 달성 |
+| [CXL-NDP](https://arxiv.org/abs/2509.03377) | arXiv 2025 | CXL 비트플레인 동적 양자화; 처리량 43%↑, 최대 컨텍스트 87%↑ |
+| [MILLION](https://arxiv.org/abs/2504.03661) | arXiv 2025 | Product Quantization 장문맥; 32K 컨텍스트 2.09×↑ |
 
-### 3.7 계층적 오프로딩·장문맥
+### G. RAG·평가 방법론
 
-| Title | Venue / Year | Contribution |
-|-------|--------------|--------------|
-| [InfLLM: Unveiling the Intrinsic Capacity of LLMs for Understanding Extremely Long Sequences with Training-Free Memory](https://arxiv.org/abs/2402.04617) | arXiv 2402.04617 (2024) | 관련 KV 블록만 GPU로 스트리밍; 1M+ 토큰 컨텍스트에서 GPU 메모리 ~50% 절감 |
-| [MagicPaginatedAttention: Unlocking Longer Context LLM Inference with Page-Level KV Cache Offloading](https://arxiv.org/abs/2407.02887) | arXiv 2407.02887 (2024) | 페이지 단위 비동기 KV 오프로딩으로 NVMe 활용; 48GB GPU에서 128K 컨텍스트 |
+| 논문 | Venue/Year | Contribution |
+|------|-----------|-------------|
+| [RAGCache](https://arxiv.org/abs/2404.12457) | arXiv 2024 | RAG 문서 청크 KV 트리 캐시로 반복 쿼리 비용 절감 |
+| [CacheBlend](https://arxiv.org/abs/2405.16444) | EuroSys 2025 | RAG 멀티청크 KV 선택적 재계산 융합; 정확도 보존 |
+| [Cache-Craft](https://arxiv.org/abs/2502.15734) | arXiv 2025 | RAG 청크 캐시 관리 시스템으로 KV 재사용 체계화 |
+| [RULER](https://arxiv.org/abs/2404.06654) | COLM 2024 | 장문맥 실질 활용 능력 종합 벤치마크 |
+| [SCBench](https://arxiv.org/abs/2412.10319) | arXiv 2024 | KV 캐시 중심 장문맥 분석 전용 벤치마크 |
 
 ---
 
 ## 4. Open Problems
 
-1. **KV 전송 비용 (P-D 분리의 병목)**: Prefill-Decode 분리 서빙에서 KV 캐시를 GPU 간 전송하는 비용이 지연의 새 병목이 되었다. 효율적인 KV 마이그레이션 프로토콜, 압축 전송, 위치 인식 배치 등의 연구가 아직 초기 단계다.
+### 문제 1: MLA와 양자화/축출 기법의 공동 설계 부재
+MLA는 KV를 잠재 벡터로 압축하기 때문에 기존 채널별 양자화나 토큰 중요도 점수 계산이 그대로 적용되지 않는다. MLA 구조에 특화된 양자화 및 토큰 축출 기법은 아직 초기 단계이며, MLA 기반 모델(DeepSeek-V2/V3 계열)이 확산됨에 따라 이 간극을 메우는 연구가 필요하다.
 
-2. **양자화와 축출의 결합 최적화**: KV 양자화와 토큰 축출을 독립적으로 적용하는 연구는 많지만, 두 기법을 동시에 최적으로 적용하는 이론적 프레임워크가 없다. 어떤 토큰을 어떤 정밀도로 보관할지 공동 결정하는 문제가 미해결 상태다.
+### 문제 2: RL/예측 기반 축출의 훈련·추론 비용 정당화
+ForesightKV, LookaheadKV 등 RL·미래 예측 기반 축출은 오프라인 훈련 비용과 온라인 예측 오버헤드가 있다. 실제 배포 시 훈련·갱신 비용 대비 절약량이 정당화되는지, 도메인 이동(domain shift) 상황에서 일반화가 유지되는지는 충분히 검증되지 않았다.
 
-3. **동적 컨텍스트 길이와 캐시 정책의 적응형 조정**: 요청마다 컨텍스트 길이가 크게 다를 때, 정적으로 정의된 eviction/양자화 정책이 최적이 아닌 경우가 많다. 온라인으로 정책을 조정하는 적응형(adaptive) KV 관리가 필요하다.
+### 문제 3: P/D 분리 시 네트워크 병목과 표준화 부재
+P/D 분리 서빙이 성숙해졌으나, KV 전송 인터페이스(CacheGen, FlowKV, LMCache 등)가 각 프레임워크마다 상이하여 상호 운용이 어렵다. KV 전송 프로토콜의 표준화, 압축 포맷 호환성, 오류 복구 메커니즘은 미해결 상태이다.
 
-4. **MLA 하드웨어 지원과 커널 최적화**: DeepSeek-V2의 MLA는 이론적 압축률은 뛰어나지만 표준 FlashAttention 커널과 호환되지 않아 별도 구현이 필요하다. MLA에 특화된 고효율 커널 및 서빙 시스템 지원이 미비하다.
+### 문제 4: Long-CoT(Reasoning) 모델에서의 KV 증가 대응
+DeepSeek-R1, o3 등 Reasoning 모델은 수천~수만 토큰의 중간 추론 과정을 생성한다. 이 과정에서 KV 캐시가 폭발적으로 증가하는데, 기존 슬라이딩 윈도우나 고정 예산 축출은 논리적 연결고리를 끊어 추론 오류를 일으킬 수 있다. 추론 구조(인과 체인)를 보존하는 KV 관리 기법이 충분하지 않다.
 
-5. **캐시 재사용과 보안·프라이버시**: 다중 사용자 간 KV 캐시 공유(prefix caching)는 메모리 효율을 높이지만, 다른 사용자의 프롬프트 정보 노출 위험이 있다. 캐시 재사용과 데이터 격리를 동시에 달성하는 안전한 공유 메커니즘이 필요하다.
+### 문제 5: CXL 계층 메모리의 지연·대역폭 불확실성
+CXL 기반 KV 오프로딩은 실험 하드웨어(시뮬레이터, FPGA 프로토타입)에서 검증된 경우가 많다. 실제 CXL 2.0/3.0 DRAM 모듈과 운영 체제 스케줄러 간 상호작용에서의 지연 변동성, 멀티테넌트 혼용 시 QoS 보장 방법 등 실운영 증거가 부족하다.
 
-6. **장문맥 벤치마크의 부재**: 100K~1M 토큰 컨텍스트에서 KV 캐시 기법의 품질 손실을 공정하게 평가하는 표준 벤치마크가 없다. LongBench, RULER 등이 있지만 실제 업무 태스크와의 괴리가 크다.
+### 문제 6: KV 캐시 보안·프라이버시 취약성
+DefensiveKV([arXiv 2025](https://arxiv.org/abs/2510.13334))가 지적하듯, KV 캐시 공유(멀티테넌트 APC, KVShare 등) 환경에서 다른 사용자의 프롬프트 정보가 KV를 통해 추론될 수 있다. 캐시 오염 공격(prompt injection via shared KV), 사이드 채널 공격, 데이터 잔류 문제는 아직 체계적으로 연구되지 않았다.
 
-7. **스펙울러티브 디코딩과 KV 캐시의 통합**: 스펙울러티브 디코딩은 draft 모델의 KV 캐시를 별도로 관리해야 해 복잡성이 증가한다. 두 기법의 KV 캐시를 효율적으로 공동 관리하는 시스템이 미성숙하다.
+### 문제 7: 이기종 모델·태스크 혼합 환경에서의 KV 재사용 한계
+KVShare, BatchLLM, Preble 등은 동일 모델·유사 프롬프트 간 KV 재사용을 전제한다. 하지만 동일 서비스 내 여러 파인튜닝 변종 모델이 혼용되거나, 사용자 태스크가 다양할 때 KV 재사용률이 급감하는 "cold-start" 문제와 캐시 메모리 낭비가 발생한다.
 
 ---
 
 ## 5. Notable Researchers / Groups
 
-| 연구자 / 그룹 | 소속 | 주요 기여 |
-|--------------|------|----------|
-| Woosuk Kwon, Zhuohan Li, Siyuan Zhuang | UC Berkeley (Ion Stoica 그룹) | PagedAttention, vLLM |
-| Lianmin Zheng, Liangsheng Yin | UC Berkeley | SGLang, RadixAttention |
-| Tri Dao | Princeton / Together AI | FlashAttention, FlashDecoding |
-| Guangxuan Xiao | MIT (Song Han 그룹) | StreamingLLM, SparseGPT |
-| Zhenyu Zhang | Rice University | H2O |
-| DeepSeek AI (Aixin Liu 외) | DeepSeek | DeepSeek-V2 MLA, DeepSeek-V3 |
-| Moonshot AI (Bin Chen 외) | Moonshot / Tsinghua | Mooncake, KV-centric 서빙 |
-| Coleman Hooper | UC Berkeley | KVQuant |
-| Zichang Liu | Rice University | KIVI |
-| Yuhong Li | UIUC (Tianle Cai 그룹) | PyramidKV |
-| Ion Stoica 그룹 | UC Berkeley | vLLM, DistServe, Sarathi-Serve |
-| Tim Dettmers | UW (Ludwig Schmidt 그룹) | 저비트 양자화 (LLM.int8(), QLoRA) |
-| NVIDIA TensorRT-LLM 팀 | NVIDIA | 산업용 KV 관리, FP8 KV cache |
+| 이름/그룹 | 소속 | 대표 기여 |
+|-----------|------|----------|
+| **Tri Dao** | Princeton / Together AI | FlashAttention 시리즈, FlashInfer |
+| **Ion Stoica 그룹** | UC Berkeley (Sky Computing Lab) | vLLM, SGLang, Preble, CacheBlend |
+| **Lianmin Zheng** | UC Berkeley / LMSYS | SGLang, Punica, vLLM |
+| **Dacheng Li** | UC Berkeley | ShadowKV, SGLang v0.4 |
+| **DeepSeek 팀** | DeepSeek AI | MLA(DeepSeek-V2/V3), NSA, DeepSeek-R1 |
+| **Baris Kasikci 그룹** | University of Michigan | DistServe, Sarathi-Serve |
+| **Mosharaf Chowdhury 그룹** | University of Michigan | DistServe, CacheGen |
+| **Kimi/Moonshot AI 팀** | Moonshot AI | Mooncake, KV 중심 분리 서빙 |
+| **Ce Zhang 그룹** | ETH Zürich / Together AI | ZipCache, 서빙 최적화 |
+| **Kurt Keutzer 그룹** | UC Berkeley | KVQuant, KIVI, QServe |
+| **Song Han 그룹** | MIT / NVIDIA | QServe, LServe, EfficientML |
+| **Xipeng Qiu 그룹** | Fudan University | MInference, 장문맥 효율화 |
+| **Beidi Chen 그룹** | CMU / Meta AI | Quest, 희소 어텐션 |
+| **Microsoft Research Asia** | Microsoft | MInference, YOCO, TPA, TransMLA |
+| **Google DeepMind** | Google | Gemini KV 효율화 연구 (확인 필요) |
 
 ---
 
 ## 6. Resources
 
-### 주요 GitHub 레포지토리
+### 주요 오픈소스 프레임워크 및 라이브러리
 
-| 이름 | URL | 설명 |
+| 자원 | URL | 설명 |
 |------|-----|------|
-| vLLM | https://github.com/vllm-project/vllm | PagedAttention 기반 서빙 프레임워크 |
-| SGLang | https://github.com/sgl-project/sglang | RadixAttention 기반 서빙 프레임워크 |
-| FlashInfer | https://github.com/flashinfer-ai/flashinfer | Paged KV 지원 고속 어텐션 커널 |
-| TensorRT-LLM | https://github.com/NVIDIA/TensorRT-LLM | NVIDIA GPU 최적화 추론 엔진 |
-| LMDeploy | https://github.com/InternLM/lmdeploy | 산업용 LLM 서빙, KV 양자화 지원 |
-| llama.cpp | https://github.com/ggml-org/llama.cpp | CPU/엣지 추론, KV 양자화 구현 |
-| H2O 구현 | https://github.com/FMInference/H2O | Heavy-Hitter Oracle 참조 구현 |
-| StreamingLLM | https://github.com/mit-han-lab/streaming-llm | Attention Sink 참조 구현 |
-| KIVI | https://github.com/jy-yuan/KIVI | 2-bit KV 양자화 참조 구현 |
+| vLLM | https://github.com/vllm-project/vllm | PagedAttention 기반 LLM 서빙 엔진 |
+| SGLang | https://github.com/sgl-project/sglang | RadixAttention, 고성능 LLM 서빙 |
+| FlashInfer | https://github.com/flashinfer-ai/flashinfer | JIT 컴파일 커널 기반 어텐션 라이브러리 |
+| FlashAttention-3 | https://github.com/Dao-AILab/flash-attention | 하드웨어 최적화 어텐션 커널 |
+| LMCache | https://github.com/LMCache/LMCache | GPU 외부 계층 KV 캐시 스토어 |
+| MInference | https://github.com/microsoft/MInference | 동적 희소 프리필 어텐션 라이브러리 |
+| KVQuant | https://github.com/SqueezeAILab/KVQuant | 비균일 KV 양자화 구현 |
+| KIVI | https://github.com/jy-tang/KIVI | 2-bit KV 양자화 파이썬 구현 |
 
-### 벤치마크·평가 도구
+### 벤치마크 및 평가 도구
 
-- **LongBench** (arXiv 2308.14508): 이중언어 장문맥 이해 벤치마크
-- **RULER** (arXiv 2404.06654): 장문맥 성능 평가 도구 (needle-in-haystack 확장)
-- **vLLM Benchmark suite**: https://github.com/vllm-project/vllm/tree/main/benchmarks
-- **SGLang Benchmark**: https://github.com/sgl-project/sglang/tree/main/benchmark
+| 자원 | URL/arXiv | 설명 |
+|------|----------|------|
+| RULER | https://arxiv.org/abs/2404.06654 | 장문맥 실질 활용 능력 종합 벤치마크 |
+| SCBench | https://arxiv.org/abs/2412.10319 | KV 캐시 중심 장문맥 분석 벤치마크 |
+| LongBench | https://github.com/THUDM/LongBench | 장문맥 이해 능력 다과제 벤치마크 |
+| VIDUR | https://github.com/microsoft/vidur | LLM 추론 서빙 고충실도 시뮬레이터 |
+| LLMPerf | https://github.com/ray-project/llmperf | LLM 서빙 성능 측정 도구 |
+
+### 데이터셋
+
+| 자원 | 설명 |
+|------|------|
+| SCROLLS | 장문 문서 요약·QA 평가 데이터셋 |
+| Needle-in-a-Haystack | 장문맥 검색 능력 평가용 합성 데이터 |
+| AIME 2024/2025 | 수학 추론 능력 평가 (Reasoning 모델 KV 평가에 활용) |
 
 ---
 
 ## 7. Reading List
 
-### 입문 (필수 기초)
+입문에서 심화 순으로 구성하였다.
 
-1. [Attention Is All You Need](https://arxiv.org/abs/1706.03762) (Vaswani et al., 2017) — Transformer 및 MHA 원본; KV 캐시 개념의 기원 *(historical)*
-2. [Fast Transformer Decoding: One Write-Head is All You Need](https://arxiv.org/abs/1911.02150) (Shazeer, 2019) — MQA 제안; KV 헤드 수 절감의 시작 *(historical)*
-3. [GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints](https://arxiv.org/abs/2305.13245) — GQA 체계화, 현재 대부분 모델 채택
+### 입문 (기초 개념 및 동기)
 
-### 핵심 시스템 논문
+1. **Attention Is All You Need** (Vaswani et al., NeurIPS 2017) — 트랜스포머 어텐션 메커니즘과 KV 캐시의 원점. (historical)
+2. **FlashAttention** (Dao et al., NeurIPS 2022) — IO 인식 어텐션 커널; KV 캐시 메모리 계층 이해의 기초. (historical)
+3. **Efficient Memory Management for Large Language Model Serving with PagedAttention** (Kwon et al., SOSP 2023) — vLLM의 기반; KV 캐시 단편화 문제와 가상 메모리 해결 방법. (historical)
+4. **[RULER](https://arxiv.org/abs/2404.06654)** (Hsieh et al., COLM 2024) — 장문맥 KV 캐시 활용 능력의 실질적 평가 방법론.
 
-4. [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) — vLLM, KV 가상 메모리; 반드시 읽어야 할 기초
-5. [SGLang: Efficient Execution of Structured Language Model Programs](https://arxiv.org/abs/2312.07104) — RadixAttention, 프리픽스 재사용
-6. [DistServe: Disaggregating Prefill and Decoding](https://arxiv.org/abs/2401.09670) — P-D 분리 서빙 설계
+### 중급 (핵심 서빙 시스템)
 
-### 토큰 축출·압축
+5. **[SGLang](https://arxiv.org/abs/2312.07104)** (Zheng et al., NeurIPS 2024) — RadixAttention 자동 KV 재사용; 서빙 시스템 구조 이해에 필수.
+6. **[Sarathi-Serve](https://arxiv.org/abs/2403.02310)** (Agrawal et al., OSDI 2024) — stall-free chunked prefill; P/D 워크로드 간섭 해결 방법.
+7. **[DistServe](https://arxiv.org/abs/2401.09670)** (Zhong et al., OSDI 2024) — P/D 분리의 이론적 틀과 goodput 최적화.
+8. **[Mooncake](https://arxiv.org/abs/2407.00079)** (Qin et al., FAST 2025) — KV 중심 분리 아키텍처의 실운영 사례.
+9. **[FlashInfer](https://arxiv.org/abs/2501.01005)** (Ye et al., MLSys 2025) — JIT 컴파일 기반 어텐션 커널 설계 원리.
 
-7. [H2O: Heavy-Hitter Oracle for Efficient Generative Inference](https://arxiv.org/abs/2306.14048) — 중요도 기반 축출 기초
-8. [Efficient Streaming Language Models with Attention Sinks](https://arxiv.org/abs/2309.17453) — 무한 스트리밍 생성
-9. [SnapKV: LLM Knows What You are Looking for Before Generation](https://arxiv.org/abs/2404.14469) — 쿼리 인식 KV 선택
+### 중급 (KV 압축·양자화)
 
-### KV 양자화
+10. **[KIVI](https://arxiv.org/abs/2402.02750)** (Liu et al., ICML 2024) — 2-bit KV 양자화 입문; 파인튜닝 없는 접근의 시작점.
+11. **[KVQuant](https://arxiv.org/abs/2401.18079)** (Hooper et al., NeurIPS 2024) — 비균일 양자화 기법과 이론적 배경.
+12. **[Palu](https://arxiv.org/abs/2407.21118)** (Chang et al., ICLR 2025) — 저랭크 분해와 양자화 결합의 시너지.
+13. **[MInference](https://arxiv.org/abs/2407.02490)** (Jiang et al., NeurIPS 2024) — 동적 희소 어텐션; 1M 토큰 프리필 가속.
+14. **[Quest](https://arxiv.org/abs/2406.10774)** (Tang et al., ICML 2024) — 쿼리 인식 KV 페이지 선택의 핵심 아이디어.
 
-10. [KIVI: A Tuning-Free Asymmetric 2bit Quantization for KV Cache](https://arxiv.org/abs/2402.02750) — 2-bit KV 양자화 실용화
-11. [KVQuant: Towards 10 Million Context Length LLM Inference](https://arxiv.org/abs/2401.18079) — 초장문맥 KV 양자화
+### 심화 (아키텍처·최신 연구)
 
-### 아키텍처·심화
-
-12. [DeepSeek-V2: A Strong, Economical, and Efficient MoE Language Model](https://arxiv.org/abs/2405.04434) — MLA 설계, 93% KV 절감
-13. [FlashInfer: Efficient and Customizable Attention Engine](https://arxiv.org/abs/2501.01005) — 서빙 시스템 커널 통합
-14. [Quest: Query-Aware Sparsity for Efficient Long-Context LLM Inference](https://arxiv.org/abs/2406.10774) — 장문맥 희소 어텐션
-15. [Mooncake: A KVCache-centric Disaggregated Architecture](https://arxiv.org/abs/2407.00079) — KV 중심 분산 서빙 설계
+15. **[DeepSeek-V2 (MLA)](https://arxiv.org/abs/2405.04434)** (DeepSeek Team, 2024) — MLA 설계 원리; KV 93.3% 절감의 이론적·실험적 근거.
+16. **[YOCO](https://arxiv.org/abs/2405.05254)** (Sun et al., NeurIPS 2024) — 단일 KV 저장 디코더-디코더 아키텍처; 아키텍처 혁신의 극단.
+17. **[TransMLA](https://arxiv.org/abs/2502.07864)** (He et al., NeurIPS 2025) — 사후 MLA 변환; 기존 모델 생태계의 MLA 이식 방법론.
+18. **[ForesightKV](https://arxiv.org/abs/2602.03203)** (2026) — RL 기반 축출; 지능형 캐시 관리의 최신 방향.
+19. **[ShadowKV](https://arxiv.org/abs/2410.21465)** (Sun et al., ICML 2025) — GPU/CPU 메모리 계층 협력의 정교한 설계.
+20. **[TraCT](https://arxiv.org/abs/2512.18194)** (arXiv 2025) — CXL 공유 메모리 KV 풀; 새로운 메모리 계층 활용의 실험적 증거.
 
 ---
 
 ## 8. Methodology
 
-### 검색 전략
+### 검색 쿼리 및 출처 범위
 
-본 보고서는 모델 학습 데이터(지식 컷오프 2025-08)에 포함된 논문·기술 보고서·공개 코드베이스를 주요 출처로 사용했으며, 다음 쿼리를 기준으로 정보를 정리했다.
+본 보고서는 사용자가 제공한 R1~R6 수집 데이터를 기반으로 작성되었으며, 별도의 실시간 웹 검색은 수행되지 않았다. 제공된 데이터는 아래 학술 출처에서 수집된 것으로 명시되어 있다.
 
-**주요 검색 쿼리**:
-- `KV cache compression LLM inference 2023 2024`
-- `PagedAttention vLLM serving system`
-- `KV cache quantization 2-bit KIVI KVQuant`
-- `token eviction H2O SnapKV PyramidKV`
-- `disaggregated prefill decode DistServe Splitwise`
-- `MLA multi-head latent attention DeepSeek-V2`
-- `prefix caching RadixAttention SGLang`
-- `KV cache offloading long context inference`
+**포함 학술 기관/학회 (2023-01 ~ 2026-04)**
 
-**출처 범위**:
-- arXiv cs.LG, cs.CL, cs.DC, cs.AR (2023-01 ~ 2025-08)
-- SOSP 2023, OSDI 2024, MLSys 2024, NeurIPS 2023/2024, ICML 2024, ICLR 2024, ACL 2023/2024, ISCA 2024, SC 2024
-- vLLM 공식 문서 및 GitHub changelog
-- SGLang 공식 블로그 및 GitHub changelog
-- DeepSeek-V2 기술 보고서
+| 범주 | 출처 |
+|------|------|
+| 시스템 컨퍼런스 | OSDI 2024, SOSP 2023, ISCA 2024, ASPLOS 2025, FAST 2025, EuroSys 2025, SIGCOMM 2024 |
+| ML/AI 컨퍼런스 | NeurIPS 2024/2025, ICML 2024/2025, ICLR 2025/2026, MLSys 2024/2025 |
+| NLP 컨퍼런스 | ACL 2024/2025, EMNLP 2024/2025, COLING 2025, COLM 2024 |
+| 프리프린트 | arXiv (2024-01 ~ 2026-04) |
 
-**한계 및 확인 필요 사항**:
-- 2025-08 이후 발표된 논문(예: 2026년 상반기)은 포함되지 않음. 최신 동향은 arXiv 직접 검색 필요.
-- 일부 산업 구현(NVIDIA TensorRT-LLM 내부, Meta 내부 서빙 시스템)의 세부 수치는 공개되지 않아 포함하지 않음.
-- 논문 수치는 각 논문 발표 시점의 조건(모델, 하드웨어, 데이터셋)에 기반하므로 직접 비교 시 주의 필요.
-- FlashAttention 시리즈(FA1/FA2/FA3)는 어텐션 커널 최적화이며 KV 캐시 관리와 간접 연관이 있으나, 본 보고서에서는 KV 관리에 직접 관련된 FlashInfer, FlashDecoding만 포함했음.
+**가정 및 한계**
+
+- 제공된 URL은 모두 사용자가 검증한 것으로 간주하였다. 단, arXiv 2025~2026 논문 중 일부는 동료 심사 전 프리프린트이므로 결과가 최종 출판본과 다를 수 있다.
+- venue 표기가 "확인 필요"인 항목: PM-KVQ(OpenReview 링크만 제공됨, 최종 게재지 불명확), YOCO++([arXiv 2025](https://arxiv.org/abs/2604.13556), 아직 프리프린트), ScoutAttention([arXiv 2026](https://arxiv.org/abs/2603.27138), 아직 프리프린트).
+- 수치(배속, 압축률)는 각 논문이 자체 보고한 수치이며, 하드웨어 환경·기준선이 논문마다 상이하므로 직접 비교에 주의가 필요하다.
+- Google DeepMind의 Gemini KV 효율화 연구는 공개 논문 기준으로 확인 불가한 부분이 있어 "확인 필요"로 표기하였다.
+
+**검색 재현을 위한 키워드 예시**
+
+```
+"KV cache" "quantization" LLM 2024 2025
+"prefill decode disaggregation" serving
+"multi-head latent attention" OR "MLA" compression
+"KV cache eviction" "token selection" transformer
+"CXL" "KV cache" offloading memory
+"long context" "KV cache" offload
+site:arxiv.org "KV cache" 2025
+```
