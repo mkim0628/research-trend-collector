@@ -47,7 +47,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch
   - `topic-slug`은 영문 소문자·하이픈만 사용 (예: `llm-tool-use`).
   - 날짜는 `Bash date +%Y-%m-%d`로 확보합니다.
   - `reports/` 디렉터리가 없으면 `Bash mkdir -p reports`로 생성합니다.
-- 언어: 명세에 `language: ko`이면 한국어, `en`이면 영어, 미지정이면 명세 파일의 주 언어를 따릅니다.
+- 언어: **기본값은 한국어**입니다. 명세에 `language: en`이 명시된 경우에만 영어로 작성하고, 그 외(미지정 또는 `language: ko`)는 모두 한국어 본문으로 작성합니다. 단 논문 제목·저자·기관·고유명사·기술 용어 등은 원문(주로 영문) 그대로 유지합니다.
 - 형식은 `CLAUDE.md`의 "보고서 표준 형식" 섹션을 그대로 따릅니다.
 
 #### 보고서 템플릿

@@ -47,6 +47,8 @@ tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch
 
 ### 5. 보고서 형식
 
+본문 언어는 **항상 한국어**로 작성합니다. 단 논문 제목·저자·기관·고유명사·기술 용어·수식 변수명은 원문(주로 영문) 그대로 유지하며, 필요하면 한국어 풀이를 괄호로 덧붙입니다.
+
 다음 front matter로 시작합니다(README 인덱서가 파싱).
 
 ```yaml
