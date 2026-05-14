@@ -27,11 +27,14 @@
 > 아래 영역은 `report-indexer` 서브에이전트가 자동 갱신합니다. 마커 사이만 교체되며, 그 밖의 내용은 보존됩니다.
 
 <!-- BEGIN: AUTO-INDEX -->
-_마지막 업데이트: 2026-05-04 · 보고서 4개 · 논문 139편 · Deep-dive 1건_
+_마지막 업데이트: 2026-05-14 · 보고서 5개 · 논문 157편 · Deep-dive 1건_
 
-### LLM 추론 KV 캐시 관리·최적화
-- Latest: [kv-cache-optimization-2026-05-04](reports/kv-cache-optimization-2026-05-04.md)
+### LLM KV 캐시 관리·최적화
+- Latest: [kv-cache-optimization-2026-05-14](reports/kv-cache-optimization-2026-05-14.md)
 - 주요 논문:
+
+  **A. 서빙 시스템·메모리 관리** (신규 — 2026-05-14 보고서)
+  - [Not All Prefills Are Equal: PPD Disaggregation for Multi-turn LLM Serving](https://arxiv.org/abs/2603.13358) — 멀티턴 서빙에서 Turn 2+ 요청을 디코드 노드에서 로컬 처리할지 P 노드로 전송할지 동적 라우팅; Turn 2+ TTFT 68%↓, TPOT 유지
 
   **A. 서빙 시스템·메모리 관리** (신규 — 2026-05-04 보고서)
   - [AdaptCache: KV Cache Native Storage Hierarchy for Low-Delay and High-Quality Language Model Serving](https://arxiv.org/abs/2509.00105) — 각 KV 항목별 압축 알고리즘·비율·배치 장치 동적 결정; KIVI 대비 TTFT 69%↓, 정적 기준선 대비 1.43~2.4× 지연 절감
@@ -42,6 +45,15 @@ _마지막 업데이트: 2026-05-04 · 보고서 4개 · 논문 139편 · Deep-d
   - [TaiChi: Prefill-Decode Aggregation or Disaggregation?](https://arxiv.org/abs/2508.01989) — SLO에 따라 집합·분리 모드를 동적으로 전환하는 통합 서빙; goodput 최대 77%↑
   - [MuxWise: Towards High-Goodput LLM Serving with Prefill-decode Multiplexing](https://arxiv.org/abs/2504.14489) — 레이어 단위 버블-없는 인트라-GPU P/D 다중화; SLO 보장 처리량 2.20×(최대 3.06×)↑
   - [DuetServe: Harmonizing Prefill and Decode for LLM Serving via Adaptive GPU Multiplexing](https://arxiv.org/abs/2511.04791) — 오염 예측 시 SM 수준 공간 다중화 활성화; Qwen3 기준 처리량 1.3×↑
+
+  **B. KV 양자화·압축** (신규 — 2026-05-14 보고서)
+  - [RateQuant: Optimal Mixed-Precision KV Cache Quantization via Rate-Distortion Theory](https://arxiv.org/abs/2605.06675) — Rate-Distortion 이론의 역 워터필링으로 헤드별 비트폭 최적 배분; 1.6초 보정으로 KIVI PPL 49.3 → 14.9 (70%↓), QuaRot 6.6 PPL 개선
+  - [FibQuant: Universal Vector Quantization for Random-Access KV-Cache Compression](https://arxiv.org/abs/2605.11478) — Fibonacci/quasi-uniform 방향 + Beta-quantile 반경 범용 벡터 양자화; 보정 없이 분수·sub-1-bit 동작점 지원, TurboQuant를 동일 정수 비율에서 엄밀히 지배
+  - [eOptShrinkQ: Near-Lossless KV Cache Compression Through Optimal Spectral Denoising and Quantization](https://arxiv.org/abs/2605.02905) — KV 캐시를 스파이크 랜덤 행렬 모델로 분해; 최적 특이값 수축(eOptShrink) + TurboQuant 잔차 양자화; ~2.2 bit에서 FP16 수준 멀티-니들 검색 성능
+  - [When Quantization Is Free: An int4 KV Cache That Outruns fp16 on Apple Silicon](https://arxiv.org/abs/2605.05699) — Apple Silicon 통합 메모리에서 sign-randomized FFT + per-channel λ + int4 nibble pack 단일 융합 Metal 커널; Gemma-3 1B에서 fp16 대비 3~8% ms/tok↓, 3× 메모리 절감
+  - [How to Compress KV Cache in RL Post-Training? Shadow Mask Distillation for Memory-Efficient Alignment](https://arxiv.org/abs/2605.06850) — RL 롤아웃 중 KV 압축의 오프-폴리시 편향을 Shadow Mask Distillation로 해소; 장문맥 RL 후처리 메모리 벽 극복
+  - [Beyond Token Eviction: Mixed-Dimension Budget Allocation for Efficient KV Cache Compression](https://arxiv.org/abs/2603.20616) — 토큰별 차원 수를 연속적으로 배분하는 MixedDimKV/MixedDimKV-H; 기존 토큰 축출을 차원 축소의 극단 사례로 일반화, LongBench HeadKV 대비 지속적 우위
+  - [WindowQuant: Mixed-Precision KV Cache Quantization based on Window-Level Similarity for VLMs Inference Optimization](https://arxiv.org/abs/2605.02262) — 비디오 VLM의 시각 토큰 윈도우-텍스트 유사도 기반 비트폭 자동 탐색; 윈도우 수준 양자화 계산으로 하드웨어 효율 유지
 
   **B. KV 양자화·압축** (신규 — 2026-05-04 보고서)
   - [Cocktail: Chunk-Adaptive Mixed-Precision Quantization for Long-Context LLM Inference](https://arxiv.org/abs/2503.23294) — 쿼리-청크 유사도 기반 비트폭 동적 선택 + 청크 재정렬; 장문맥 LLM 추론 SOTA 초과 (DATE 2025)
@@ -54,6 +66,13 @@ _마지막 업데이트: 2026-05-04 · 보고서 4개 · 논문 139편 · Deep-d
   - [TurboQuant](https://arxiv.org/abs/2504.19874) — 랜덤 직교 회전 + QJL 잔차로 3-bit 벡터 양자화; KV 6×↓, H100 기준 어텐션 8×↑ (ICLR 2026)
   - [RotateKV](https://arxiv.org/abs/2501.16383) — 채널 재정렬 아웃라이어 인식 FWHT 회전; 2-bit PPL 저하 0.3↓
   - [KIVI](https://arxiv.org/abs/2402.02750) — 파인튜닝 없는 비대칭 2-bit KV 양자화; 메모리 2.6×↓ (ICML 2024)
+
+  **C. 토큰 축출·희소 어텐션** (신규 — 2026-05-14 보고서)
+  - [LKV: End-to-End Learning of Head-wise Budgets and Token Selection for LLM KV Cache Eviction](https://arxiv.org/abs/2605.06676) — 헤드별 예산 학습(LKV-H) + 어텐션 행렬 미실체화 토큰 중요도 도출(LKV-T); LongBench 15% KV 보존에서 거의 무손실, 6.6× 저장 절감
+  - [Reformulating KV Cache Eviction Problem for Long-Context LLM Inference](https://arxiv.org/abs/2605.07234) — KV 축출을 레이어별 행렬곱 근사 문제로 재정의(LaProx); 어텐션 맵×투영 값 곱셈 상호작용 모델링으로 모델 전역 비교 가능 단일 스코어 산출, LongBench 전반 SOTA
+  - [Sparse Attention as a Range Searching Problem: Towards an Inference-Efficient Index for KV Cache](https://arxiv.org/abs/2605.06763) — 희소 어텐션을 반공간 범위 탐색으로 환원; Louver 인덱스로 거짓 음성 제로 이론 보증, FlashAttention보다 빠른 런타임
+  - [MISA: Mixture of Indexer Sparse Attention for Long-Context LLM Inference](https://arxiv.org/abs/2605.07363) — DeepSeek DSA 인덱서를 MoE 헤드 풀로 대체; 블록 수준 통계 기반 경량 라우터로 활성 헤드 수 동적 축소, 장문맥 인덱서 지배 비용 제거
+  - [StreamIndex: Memory-Bounded Compressed Sparse Attention via Streaming Top-k](https://arxiv.org/abs/2605.02568) — DeepSeek V4 CSA 파이프라인의 256GB 임시 텐서 문제를 청크 파티션-병합 top-k로 해소; S=1,048,576까지 6.21GB HBM으로 확장, recall 0.9980+
 
   **C. 토큰 축출·희소 어텐션** (신규 — 2026-05-04 보고서)
   - [SAGE-KV: LLMs Know What to Drop](https://arxiv.org/abs/2503.08879) — 프리필 후 1회 top-k 선택(토큰+헤드); StreamLLM 대비 4× 메모리 효율 (ICLR 2025)
@@ -88,6 +107,11 @@ _마지막 업데이트: 2026-05-04 · 보고서 4개 · 논문 139편 · Deep-d
   - [TransMLA](https://arxiv.org/abs/2502.07864) — GQA→MLA 사후 변환; KV 68.75%↓, 추론 10.6×↑ (NeurIPS 2025 Spotlight)
   - [TPA](https://arxiv.org/abs/2501.06425) — 텐서 분해 어텐션; KV 10×↓ (NeurIPS 2025 Spotlight)
 
+  **F. 장문맥·계층적 오프로딩** (신규 — 2026-05-14 보고서)
+  - [Tutti: Making SSD-Backed KV Cache Practical for Long-Context LLM Serving](https://arxiv.org/abs/2605.03375) — GPU-centric KV 오브젝트 스토어; CPU를 데이터 경로에서 배제, GPU io_uring 비동기 직접 객체 I/O + 슬랙-인식 스케줄링; GDS 기반 LMCache 대비 TTFT 78.3%↓, 요청 처리율 2×↑, 비용 27%↓
+  - [KV-Fold: One-Step KV-Cache Recurrence for Long-Context Inference](https://arxiv.org/abs/2605.12471) — KV 캐시를 청크 좌측 폴드(foldl) 재귀로 처리; 학습·아키텍처 변경 없이 Llama-3.1-8B 128K 토큰 40GB GPU에서 100% 정확 검색, 수치 안정성 10,000× 범위에 무감
+  - [An Efficient Hybrid Sparse Attention with CPU-GPU Parallelism for Long-Context Inference](https://arxiv.org/abs/2605.07719) — CPU 상주 KV 캐시에 대한 출력 인식 예산 할당 + 헤드별 희소 구성 + 크로스-디바이스 협력 실행(Fluxion); GPU 유휴 시간 제거, 장문맥 CPU-GPU 하이브리드 추론 E2E 효율화
+
   **F. 장문맥·계층적 오프로딩** (신규 — 2026-05-04 보고서)
   - [SparKV: Overhead-Aware KV Cache Loading for Efficient On-Device LLM Inference](https://arxiv.org/abs/2604.21231) — 클라우드 스트리밍 vs. 온디바이스 계산 동적 결정; TTFT 1.3~5.1×↓, 에너지 1.5~3.3×↓
 
@@ -96,10 +120,14 @@ _마지막 업데이트: 2026-05-04 · 보고서 4개 · 논문 139편 · Deep-d
   - [KVSwap](https://arxiv.org/abs/2511.11907) — 디스크 특성 인식 KV 오프로딩 (MobiSys 2026)
   - [Dual-Blade](https://arxiv.org/abs/2604.26557) — NVMe-Direct 이중 경로; prefill 33.1%↓, decode 42.4%↓
 
-  **G. RAG·평가 방법론** (이전 보고서)
+  **G. VLM·멀티모달 KV 관리** (신규 — 2026-05-14 보고서)
+  - [Make Your LVLM KV Cache More Lightweight](https://arxiv.org/abs/2605.00789) — 텍스트 프롬프트 유도 크로스-모달리티 메시지 패싱으로 시각 토큰 점진적 압축(LightKV); 원본 55% 토큰으로 KV 반감, 연산량 40%↓, 8개 오픈소스 LVLM에서 기준선 상회
+  - [RetentiveKV: State-Space Memory for Uncertainty-Aware Multimodal KV Cache Eviction](https://arxiv.org/abs/2605.04075) — 시각 토큰의 "지연 중요도"와 공간 연속성을 SSM 기반 연속 메모리 진화로 처리; 이산 축출 → 연속 갱신 패러다임 전환; 5× KV 압축, 1.5× 디코딩 가속
+
+  **H. RAG·평가 방법론** (이전 보고서)
   - [KV Cache Optimization Strategies for Scalable and Efficient LLM Inference](https://arxiv.org/abs/2603.20397) — 5개 방향 체계적 리뷰; 2026년 분야 지형도
 
-  **H. 보안·프라이버시** (이전 보고서)
+  **I. 보안·프라이버시** (이전 보고서)
   - [Shadow in the Cache](https://arxiv.org/abs/2508.09442) — KV 역산·충돌·주입 3종 공격 + KV-Cloak 방어 (NDSS 2026)
   - [SafeKV](https://arxiv.org/abs/2508.08438) — 타이밍 사이드채널 차단 선택적 KV 공유
 
