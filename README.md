@@ -27,13 +27,15 @@
 > 아래 영역은 `report-indexer` 서브에이전트가 자동 갱신합니다. 마커 사이만 교체되며, 그 밖의 내용은 보존됩니다.
 
 <!-- BEGIN: AUTO-INDEX -->
-_마지막 업데이트: 2026-05-18 · 보고서 8개 · 논문 195편 · Deep-dive 1건_
+_마지막 업데이트: 2026-05-19 · 보고서 9개 · 논문 201편 · Deep-dive 1건_
 
 ### LLM KV 캐시 관리·최적화
-- Latest: [kv-cache-optimization-2026-05-18](reports/kv-cache-optimization-2026-05-18.md)
+- Latest: [kv-cache-optimization-2026-05-19](reports/kv-cache-optimization-2026-05-19.md)
 - 주요 논문:
 
   **A. 서빙 시스템·메모리 관리**
+  - [KV-RM: Regularizing KV-Cache Movement for Static-Graph LLM Serving](https://arxiv.org/abs/2605.09735) — 정적 그래프 디코더에서 블록 페이저와 병합 스테이지 전송 경로로 불규칙한 KV 접근을 정규화, 고정 형상 어텐션 커널과 호환
+  - [An Interpretable Latency Model for Speculative Decoding in LLM Serving](https://arxiv.org/abs/2605.15051) — Little's Law로 유효 배치 크기를 추론하고 prefill·draft·verification 수요를 분해, vLLM 실측으로 검증한 해석 가능 지연 모델
   - [A First Comprehensive Study of TurboQuant: Accuracy and Performance](https://vllm.ai/blog/2026-05-11-turboquant) — 4개 모델(30B~200B+)·5개 벤치마크에서 TurboQuant vs FP8 vs BF16 비교; FP8이 2× KV 용량 절감+정확도 손실 최소로 기본값 권고, TurboQuant는 메모리 절감 우선 시나리오에 적합
   - [Serving Agentic Workloads at Scale with vLLM x Mooncake](https://vllm.ai/blog/2026-05-06-mooncake-store) — 복수 vLLM 인스턴스가 클러스터 전역 Mooncake Store를 공유하는 분산 KV 캐시 풀 통합; 에이전트 워크로드(80K+ 토큰)에서 처리량 3.8×·P50 TTFT 46×·E2E 지연 8.6× 감소, GB200 60× 거의 선형 스케일링
   - [SGLang v0.5.12](https://github.com/sgl-project/sglang/releases) — UnifiedRadixTree로 DeepSeek V4 HiCache(GPU→CPU→Storage 다중 계층 KV 오프로딩) 지원, W4A4 MegaMoE 커널 추가; HiSparse 희소 어텐션·SSD 오프로드 통합
@@ -52,6 +54,7 @@ _마지막 업데이트: 2026-05-18 · 보고서 8개 · 논문 195편 · Deep-d
   - [ContiguousKV: Accelerating LLM Prefill with Granularity-Aligned KV Cache Management](https://arxiv.org/abs/2601.13631) — 프리픽스 KV 오프로딩 시 청크 단위 정렬 + 비동기 프리페치; 최신 오프로딩 대비 Re-Prefill 3.85×↑
 
   **B. KV 양자화·압축**
+  - [ReCalKV: Low-Rank KV Cache Compression via Head Reordering and Offline Calibration](https://arxiv.org/abs/2505.24357) — Key에 HSR(헤드 유사도 재정렬+그룹 SVD), Value에 OVC(오프라인 캘리브레이션) 적용; LLaMA-2-7B 50% 압축 시 정확도 하락 2% 미만
   - [CommVQ: Commutative Vector Quantization for KV Cache Compression](https://arxiv.org/abs/2506.18879) — 코드북을 RoPE 행렬과 교환 가능하게 설계해 역양자화 비용을 사전 계산으로 흡수; 2-bit에서 FP16 대비 87.5% KV 크기 절감, 1-bit에서도 최소 정확도 손실로 LLaMA-3.1 8B × 128K 컨텍스트를 RTX 4090 단일 GPU로 구동 가능 (ICML '25)
   - [KVmix: Gradient-Based Layer Importance-Aware Mixed-Precision Quantization for KV Cache](https://arxiv.org/abs/2506.08018) — 그래디언트로 K·V 프로젝션 행렬의 레이어별 중요도를 측정해 비트폭 배분; 최근 피벗 토큰 풀 정밀도 보존 장문맥 전략 결합; Llama·Mistral에서 Key 2.19bit·Value 2.38bit 평균으로 4.9× 메모리 압축, 5.3× 처리량 향상 (AAAI)
   - [RateQuant: Optimal Mixed-Precision KV Cache Quantization via Rate-Distortion Theory](https://arxiv.org/abs/2605.06675) — Rate-Distortion 이론의 역 워터필링으로 헤드별 비트폭 최적 배분; 1.6초 보정으로 KIVI PPL 49.3 → 14.9 (70%↓), QuaRot 6.6 PPL 개선
@@ -101,6 +104,7 @@ _마지막 업데이트: 2026-05-18 · 보고서 8개 · 논문 195편 · Deep-d
   - [Learning to Evict from Key-Value Cache (KV Policy)](https://arxiv.org/abs/2602.10238) — 헤드별 경량 RL 에이전트; 생성 트레이스에서 미래 유용성 학습; RULER·LongBench 제로샷 일반화
 
   **D. 분산·분리 서빙 및 KV 전송**
+  - [QKVShare: Quantized KV-Cache Handoff for Multi-Agent On-Device LLMs](https://arxiv.org/abs/2605.03884) — 엣지 멀티 에이전트에서 전체 재prefill 없이 토큰별 혼합 정밀도 KV를 CacheCard로 전달; Llama-3.1-8B GSM8K에서 TTFT 단축
   - [Tutti: Making SSD-Backed KV Cache Practical for Long-Context LLM Serving](https://arxiv.org/abs/2605.03375) — GPU-centric KV 오브젝트 스토어; CPU를 데이터 경로에서 배제, GPU io_uring 비동기 직접 객체 I/O + 슬랙-인식 스케줄링; GDS 기반 LMCache 대비 TTFT 78.3%↓, 요청 처리율 2×↑, 비용 27%↓
   - [Predictive Multi-Tier Memory Management for KV Cache in Large-Scale GPU Inference](https://arxiv.org/abs/2604.26968) — 아키텍처 변형 인식 사이징 엔진 + 6계층 메모리 계층 + Bayesian 재사용 예측; 64-GPU H100 클러스터에서 캐시 적중률 70~84%, TTFT 1.4~2.1× 감소
   - [KVDirect: Distributed Disaggregated LLM Inference](https://arxiv.org/abs/2501.14743) — 다중 노드 분산 P/D 분리를 위한 텐서 중심 통신 메커니즘 + Pull 기반 KV 전송; KV 전송이 총 지연의 0.5~1.1%에 불과, 기준선 대비 요청 지연 55%↓
@@ -129,6 +133,8 @@ _마지막 업데이트: 2026-05-18 · 보고서 8개 · 논문 195편 · Deep-d
   - [TPA: Tensor Product Attention Is All You Need](https://arxiv.org/abs/2501.06425) — 텐서 분해 어텐션; KV 10×↓ (NeurIPS 2025 Spotlight)
 
   **F. 장문맥·오프로딩**
+  - [KVDrive: A Holistic Multi-Tier KV Cache Management System for Long-Context LLM Inference](https://arxiv.org/abs/2605.18071) — GPU HBM·CPU DRAM·NVMe SSD 세 계층을 어텐션 패턴 적응·파이프라인 재구성·교차 계층 조율로 통합, 최대 1.74× 처리량 향상
+  - [Not All Thoughts Need HBM: Semantics-Aware Memory Hierarchy for LLM Reasoning](https://arxiv.org/abs/2605.09490) — 추론 CoT KV를 HBM·DDR·압축·축출 4계층으로 분류; 영구 축출 비율만이 정확도를 결정한다는 제로-근사-오류 오프로딩 이론 수립
   - [Breaking the Boundaries of Long-Context LLM Inference: Adaptive KV Management on a Single Commodity GPU](https://arxiv.org/abs/2506.20187) — LeoAM: 단일 commodity GPU를 위한 최초 중요도 인식 장문맥 시스템; 층별 어텐션 가중치 분포 편향에 기반한 가변 크기 청크 분할 + 디스크에 경량 KV 추상(abstract)만 저장해 전송 지연 최소화; 평균 추론 지연 3.46× 단축, 유사 품질 유지
 
   **G. VLM·멀티모달 KV 관리**
